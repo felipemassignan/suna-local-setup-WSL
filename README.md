@@ -1,4 +1,4 @@
-# Suna Local System
+# Suna Local Setup
 
 A complete, 100% local implementation of the [Suna AI agent framework](https://github.com/kortix-ai/suna) that runs entirely on your own hardware without any external API dependencies. This system replaces all cloud services with local alternatives, centered around a Mistral 7B model served via llama.cpp.
 
@@ -28,8 +28,8 @@ A complete, 100% local implementation of the [Suna AI agent framework](https://g
 
 1. Clone this repository:
 ```bash
-git clone https://github.com/openhands/suna-local-system.git
-cd suna-local-system
+git clone https://github.com/88atman77/suna-local-setup.git
+cd suna-local-setup
 ```
 
 2. Run the installation script:
