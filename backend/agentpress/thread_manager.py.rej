@@ -1,0 +1,32 @@
+--- thread_manager.py.bak2025-05-05 00:15:00.000000000 +0000
++++ thread_manager.py.new2025-05-05 00:15:00.000000000 +0000
+@@ -74,7 +77,29 @@
+                       Defaults to None, stored as an empty JSONB object if None.
+         """
+         logger.debug(f"Adding message of type '{type}' to thread {thread_id}")
++        
++        # In local mode, we'll use a mock message
++        if config.ENV_MODE == EnvMode.LOCAL:
++            logger.info(f"LOCAL mode: Creating mock message for thread {thread_id}")
++            message_id = str(uuid.uuid4())
++            created_at = datetime.now(timezone.utc).isoformat()
++            return {
++                'message_id': message_id,
++                'thread_id': thread_id,
++                'type': type,
++                'content': content,
++                'is_llm_message': is_llm_message,
++                'metadata': metadata or {},
++                'created_at': created_at
++            }
++        
+         client = await self.db.client
++        if client is None:
++            logger.warning(f"No database client available, creating mock message for thread {thread_id}")
++            message_id = str(uuid.uuid4())
++            created_at = datetime.now(timezone.utc).isoformat()
++            return {
++                'message_id': message_id,
+ 
+ 
+ 
