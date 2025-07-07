@@ -35,7 +35,7 @@ Fork otimizado do [suna-local-setup](https://github.com/88atman77/suna-local-set
 
 ```bash
 # 1. Clone este repositório no WSL2
-git clone https://github.com/felipemassignan/suna-local-setup-WSL.git
+git clone https://github.com/felipemassignan/suna-wsl2-setup.git
 cd suna-wsl2-setup
 
 # 2. Execute a instalação automatizada
