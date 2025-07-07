@@ -18,76 +18,34 @@ A complete, 100% local implementation of the [Suna AI agent framework](https://g
 - Includes systemd service files for all components
 - Provides scripts for easy installation and management
 
-## Requirements
+# Suna Local Setup - WSL2 Edition
 
-- Linux VDS with at least 2 CPU cores and 16GB RAM
-- At least 10GB of free disk space
-- No GPU required
+Fork otimizado do [suna-local-setup](https://github.com/88atman77/suna-local-setup) para ambiente WSL2 com acesso via navegador Windows.
 
-## Quick Start
+## 🎯 **Características**
 
-1. Clone this repository:
+- ✅ Instalação automatizada no WSL2
+- ✅ Configuração automática de rede
+- ✅ Acesso via navegador Windows
+- ✅ Scripts de monitoramento
+- ✅ Configuração automática de firewall
+- ✅ Backup automatizado
+
+## ⚡ **Instalação Rápida**
+
 ```bash
-git clone https://github.com/88atman77/suna-local-setup.git
-cd suna-local-setup
-```
+# 1. Clone este repositório no WSL2
+git clone https://github.com/seu-usuario/suna-wsl2-setup.git
+cd suna-wsl2-setup
 
-2. Run the installation script:
-```bash
-sudo ./install.sh
-```
+# 2. Execute a instalação automatizada
+chmod +x *.sh
+./install_wsl2.sh
 
-3. Start the services:
-```bash
-sudo ./start-suna.sh
-```
-
-4. Access the Suna UI at http://your-server-ip:3000
-
-## Components
-
-- **llama.cpp server**: Serves the Mistral 7B model with an OpenAI-compatible API
-- **FAISS vector store**: Local vector database for document retrieval and semantic search
-- **Suna backend**: Modified to use local endpoints and bypass database requirements
-- **Suna frontend**: Modified to bypass authentication in LOCAL mode
-- **Redis server**: Required for agent run streaming
-- **Mock services**: Local implementations for web search and image generation
-
-## Configuration
-
-All configuration is handled automatically by the installation script. The main configuration files are:
-
-- `/etc/suna/backend/.env`: Backend configuration
-- `/etc/suna/frontend/.env.local`: Frontend configuration
-- `/etc/systemd/system/suna-*.service`: Systemd service files
-
-## Scripts
-
-- `install.sh`: Main installation script
-- `start-suna.sh`: Start all Suna services
-- `stop-suna.sh`: Stop all Suna services
-- `scripts/download_model.sh`: Download the Mistral 7B model
-- `scripts/setup_environment.sh`: Set up the Python environment
-- `scripts/start_llama_server.sh`: Start the llama.cpp server
-- `scripts/test_llama_server.py`: Test the llama.cpp server
-
-## Patches
-
-The repository includes patches for the Suna codebase to make it work in a completely local environment:
-
-- `files/backend/thread_manager.py.patch`: Modify thread manager to work without a database
-- `files/backend/api.py.patch`: Modify agent API to work in LOCAL mode
-- `files/backend/local_search.py`: Replace external API tools with local alternatives
-
-## Performance Optimization
-
-The system is optimized for CPU-only operation with minimal resource usage:
-
-- Mistral 7B model is quantized to 4-bit precision (Q4_K_M)
-- llama.cpp is configured to use OpenBLAS for better CPU performance
-- Redis is configured with minimal memory usage
-- Systemd services are configured for automatic restart and dependency management
-
+# 3. Configure o Windows (PowerShell como Admin)
+cd windows
+.\configure_firewall.ps1
+.\update_hosts.ps1
 ## Troubleshooting
 
 ### Services Not Starting
