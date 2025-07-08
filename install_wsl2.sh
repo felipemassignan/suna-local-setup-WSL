@@ -1,7 +1,6 @@
-```bash
 #!/bin/bash
 # install_wsl2.sh - Instalação automatizada do Suna no WSL2
-# Versão: 1.1
+# Versão: 1.2
 # Autor: Felipe Massignan
 
 set -e
@@ -18,18 +17,18 @@ log_success() { echo -e "${GREEN}✅ $1${NC}"; }
 log_warning() { echo -e "${YELLOW}⚠️  $1${NC}"; }
 log_error() { echo -e "${RED}❌ $1${NC}"; }
 
-# Banner melhorado
+# Banner
 echo -e "${BLUE}"
 cat << "EOF"
 ╔═══════════════════════════════════════════════════════════════╗
-║                    SUNA WSL2 INSTALLER                       ║
-║                   Versão Otimizada 1.1                       ║
-║              Por Felipe Massignan - CEO IA Solutions         ║
+║                    SUNA WSL2 INSTALLER                        ║
+║                   Versão Otimizada 1.2                        ║
+║              Por Felipe Massignan - CEO IA Solutions          ║
 ╚═══════════════════════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
 
-# Verificações aprimoradas
+# Verificações iniciais
 log_info "Verificando ambiente WSL2..."
 
 # Verificar WSL2
@@ -46,9 +45,9 @@ if [ "$EUID" -eq 0 ]; then
 fi
 
 # Verificar conectividade
+log_info "Verificando conectividade..."
 if ! ping -c 1 google.com &> /dev/null; then
-    log_error "Sem conectividade com a internet!"
-    exit 1
+    log_warning "Problemas de conectividade detectados, continuando..."
 fi
 
 # Obter informações do sistema
@@ -66,18 +65,18 @@ TOTAL_DISK=$(df -BG / | awk 'NR==2 {print $2}' | sed 's/G//')
 
 if [ "$TOTAL_RAM" -lt 4 ]; then
     log_warning "RAM disponível: ${TOTAL_RAM}GB (recomendado: 8GB+)"
-    read -p "Continuar mesmo assim? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Continuar mesmo assim? (y/N): "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
         exit 1
     fi
 fi
 
 if [ "$TOTAL_DISK" -lt 20 ]; then
     log_warning "Espaço em disco: ${TOTAL_DISK}GB (recomendado: 50GB+)"
-    read -p "Continuar mesmo assim? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Continuar mesmo assim? (y/N): "
+    read -r response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
         exit 1
     fi
 fi
@@ -162,11 +161,11 @@ sed -i 's/localhost/0.0.0.0/g' install.sh
 log_info "Executando instalação original do Suna..."
 sudo ./install.sh
 
-# Configurar serviços systemd aprimorados
+# Configurar serviços systemd
 log_info "Configurando serviços systemd..."
 
-# Serviço Redis melhorado
-sudo tee /etc/systemd/system/suna-redis.service > /dev/null << EOF
+# Serviço Redis
+sudo tee /etc/systemd/system/suna-redis.service > /dev/null << 'EOF'
 [Unit]
 Description=Suna Redis Server
 After=network.target
@@ -175,7 +174,7 @@ Documentation=https://redis.io/documentation
 [Service]
 Type=notify
 ExecStart=/usr/bin/redis-server /etc/redis/redis.conf
-ExecReload=/bin/kill -USR2 \$MAINPID
+ExecReload=/bin/kill -USR2 $MAINPID
 TimeoutStopSec=10
 Restart=always
 RestartSec=5
@@ -188,7 +187,7 @@ RuntimeDirectoryMode=0755
 WantedBy=multi-user.target
 EOF
 
-# Serviço LLM melhorado
+# Serviço LLM
 sudo tee /etc/systemd/system/suna-llm.service > /dev/null << EOF
 [Unit]
 Description=Suna LLM Server (llama.cpp)
@@ -211,7 +210,7 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 
-# Serviço Backend melhorado
+# Serviço Backend
 sudo tee /etc/systemd/system/suna-backend.service > /dev/null << EOF
 [Unit]
 Description=Suna Backend (FastAPI)
@@ -236,7 +235,7 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 
-# Serviço Frontend melhorado
+# Serviço Frontend
 sudo tee /etc/systemd/system/suna-frontend.service > /dev/null << EOF
 [Unit]
 Description=Suna Frontend (Next.js)
