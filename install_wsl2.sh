@@ -1,6 +1,6 @@
 #!/bin/bash
 # install_wsl2.sh - Instalação automatizada do Suna no WSL2
-# Versão: 2.3 - Corrigida e Otimizada
+# Versão: 2.5 - NVM Robusto com Tratamento de Conectividade
 # Autor: Felipe Massignan - CEO IA Solutions
 
 set -e
@@ -57,12 +57,132 @@ get_wsl_ip() {
     hostname -I | awk '{print $1}'
 }
 
+# Verificar e atualizar Node.js se necessário
+check_and_update_nodejs() {
+    log_info "Verificando versão do Node.js..."
+    
+    # Obter versão atual do Node.js
+    if command_exists node; then
+        current_node_version=$(node -v | sed 's/v//')
+        major_version=$(echo "$current_node_version" | cut -d. -f1)
+        log_info "Node.js versão atual: v$current_node_version"
+        
+        if [ "$major_version" -ge 14 ]; then
+            log_success "Node.js versão $current_node_version é compatível!"
+            return 0
+        else
+            log_warning "Node.js versão $current_node_version é muito antiga (mínimo: 14)."
+        fi
+    else
+        log_warning "Node.js não encontrado."
+    fi
+    
+    log_info "Instalando/Atualizando Node.js via NVM..."
+    
+    # Definir NVM_DIR
+    export NVM_DIR="$HOME/.nvm"
+
+    # Verificar se NVM já está instalado e carregá-lo
+    if [ -s "$NVM_DIR/nvm.sh" ]; then
+        log_info "NVM já está instalado, carregando..."
+        \. "$NVM_DIR/nvm.sh"
+        \. "$NVM_DIR/bash_completion" 2>/dev/null || true
+    else
+        log_info "Instalando NVM..."
+        
+        nvm_installed=false
+        
+        # Tentar instalar NVM via curl
+        if command_exists curl; then
+            log_info "Tentando instalação via curl..."
+            if curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash; then
+                nvm_installed=true
+                log_success "NVM instalado via curl!"
+            else
+                log_warning "Falha na instalação do NVM via curl."
+            fi
+        fi
+        
+        # Se curl falhou ou não existe, tentar wget
+        if [ "$nvm_installed" = false ] && command_exists wget; then
+            log_info "Tentando instalação via wget..."
+            if wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash; then
+                nvm_installed=true
+                log_success "NVM instalado via wget!"
+            else
+                log_warning "Falha na instalação do NVM via wget."
+            fi
+        fi
+        
+        # Se ambos falharam, tentar git clone
+        if [ "$nvm_installed" = false ] && command_exists git; then
+            log_info "Tentando instalação via git clone..."
+            if git clone https://github.com/nvm-sh/nvm.git "$NVM_DIR"; then
+                cd "$NVM_DIR"
+                git checkout v0.39.7
+                nvm_installed=true
+                log_success "NVM instalado via git!"
+            else
+                log_warning "Falha na instalação do NVM via git clone."
+            fi
+        fi
+        
+        if [ "$nvm_installed" = false ]; then
+            log_error "Não foi possível instalar NVM. Verifique sua conectividade ou instale curl/wget/git."
+            log_info "Tente executar manualmente: curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+            return 1
+        fi
+        
+        # Carregar NVM após a instalação
+        \. "$NVM_DIR/nvm.sh"
+        \. "$NVM_DIR/bash_completion" 2>/dev/null || true
+    fi
+    
+    # Adicionar carregamento do NVM ao .bashrc se ainda não estiver lá
+    if ! grep -q "NVM_DIR" "$HOME/.bashrc"; then
+        log_info "Adicionando NVM ao .bashrc..."
+        {
+            echo ''
+            echo '# NVM Configuration'
+            echo 'export NVM_DIR="$HOME/.nvm"'
+            echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm'
+            echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion'
+        } >> "$HOME/.bashrc"
+        log_success "NVM adicionado ao .bashrc."
+    fi
+
+    # Verificar se NVM está funcionando após carregamento
+    if ! command_exists nvm; then
+        log_error "NVM não está disponível no PATH atual. Tentando recarregar .bashrc..."
+        source "$HOME/.bashrc"
+        if ! command_exists nvm; then
+            log_error "Não foi possível carregar NVM. Por favor, reinicie seu terminal ou execute 'source ~/.bashrc' e tente novamente."
+            return 1
+        fi
+    fi
+    
+    # Instalar Node.js LTS
+    log_info "Instalando Node.js LTS..."
+    nvm install --lts || { log_error "Falha ao instalar Node.js LTS via NVM."; return 1; }
+    nvm use --lts || { log_error "Falha ao usar Node.js LTS via NVM."; return 1; }
+    nvm alias default lts/* || { log_error "Falha ao definir alias padrão do NVM."; return 1; }
+    
+    new_node_version=$(node -v)
+    new_npm_version=$(npm -v)
+    
+    log_success "Node.js atualizado para: $new_node_version"
+    log_success "npm atualizado para: $new_npm_version"
+    
+    # Atualizar PATH para a sessão atual para garantir que o Node.js recém-instalado seja usado
+    export PATH="$NVM_DIR/versions/node/$(nvm current)/bin:$PATH"
+}
+
 # Banner
 echo -e "${CYAN}"
 cat << "EOF"
 ╔═══════════════════════════════════════════════════════════════╗
 ║                    SUNA WSL2 INSTALLER                        ║
-║                   Versão Final 2.3                            ║
+║                   Versão Final 2.5                            ║
 ║              Por Felipe Massignan - CEO IA Solutions          ║
 ╚═══════════════════════════════════════════════════════════════╝
 EOF
@@ -86,8 +206,12 @@ fi
 
 # Verificar conectividade
 log_info "Verificando conectividade..."
-if ! ping -c 1 google.com &> /dev/null; then
-    log_warning "Problemas de conectividade detectados, continuando..."
+if ping -c 1 google.com &> /dev/null; then
+    log_success "Conectividade com a internet OK."
+else
+    log_error "Sem conectividade com a internet. Verifique sua conexão ou as configurações de rede do WSL2."
+    log_info "Tente 'wsl --shutdown' no PowerShell do Windows e reinicie o WSL2."
+    exit 1
 fi
 
 # Obter informações do sistema
@@ -138,13 +262,12 @@ if [ "$SKIP_BASIC_INSTALL" = false ]; then
     log_info "Atualizando sistema..."
     sudo apt update && sudo apt upgrade -y
 
-    # Instalar dependências essenciais
+    # Instalar dependências essenciais (sem nodejs npm - será instalado via NVM)
     log_info "Instalando dependências essenciais..."
     sudo apt install -y \
         curl wget git vim htop tree \
         build-essential cmake pkg-config \
         python3 python3-pip python3-venv python3-dev \
-        nodejs npm \
         redis-server \
         nginx \
         libopenblas-dev liblapack-dev \
@@ -155,13 +278,6 @@ if [ "$SKIP_BASIC_INSTALL" = false ]; then
         gnupg \
         lsb-release \
         jq
-
-    # Verificar versões instaladas
-    log_info "Verificando versões instaladas..."
-    echo "Python: $(python3 --version)"
-    echo "Node.js: $(node --version)"
-    echo "npm: $(npm --version)"
-    echo "Git: $(git --version)"
 
     # Configurar Git LFS
     log_info "Configurando Git LFS..."
@@ -188,7 +304,7 @@ if [ "$SKIP_BASIC_INSTALL" = false ]; then
     cd suna-local-setup
 
     # Tornar scripts executáveis
-    chmod +x *.sh
+    chmod +x *.sh 2>/dev/null || true
 
     # Criar ambiente virtual Python
     log_info "Criando ambiente virtual Python..."
@@ -203,6 +319,16 @@ if [ "$SKIP_BASIC_INSTALL" = false ]; then
     log_info "Instalando llama-cpp-python..."
     pip install llama-cpp-python[server] --no-cache-dir
 fi
+
+# Verificar e atualizar Node.js
+check_and_update_nodejs
+
+# Verificar versões instaladas
+log_info "Verificando versões instaladas..."
+echo "Python: $(python3 --version)"
+echo "Node.js: $(node --version)"
+echo "npm: $(npm --version)"
+echo "Git: $(git --version)"
 
 # Limpar cache do pip
 log_info "Limpando cache do pip..."
@@ -227,7 +353,7 @@ if [ ! -d "/opt/suna/repo" ]; then
 else
     log_info "Repositório Suna já existe, atualizando..."
     cd /opt/suna/repo
-    git pull origin main
+    git pull origin main || log_warning "Falha ao atualizar repositório. Continuando..."
 fi
 
 # Instalar dependências do backend
@@ -311,10 +437,27 @@ if [ -d "frontend" ]; then
     log_info "Instalando dependências do frontend..."
     cd frontend
     if [ -f "package.json" ]; then
+        # Limpar instalações anteriores se Node.js foi atualizado
+        if [ -d "node_modules" ]; then
+            log_info "Limpando node_modules existente..."
+            rm -rf node_modules package-lock.json
+        fi
+        
+        # Limpar cache do npm
+        npm cache clean --force
+        
+        # Instalar dependências
+        log_info "Instalando dependências do frontend (isso pode demorar)..."
         npm install
+        
         log_info "Construindo frontend..."
-        npm run build
-        log_success "Frontend construído com sucesso!"
+        if npm run build; then
+            log_success "Frontend construído com sucesso!"
+        else
+            log_error "Erro ao construir frontend. Verifique os logs acima."
+            log_info "Você pode tentar construir manualmente depois com:"
+            log_info "cd /opt/suna/repo/frontend && npm run build"
+        fi
     else
         log_warning "package.json não encontrado no frontend"
     fi
@@ -327,6 +470,14 @@ cd /opt/suna/suna-local-setup
 
 # Configurar serviços systemd
 log_info "Configurando serviços systemd..."
+
+# Obter caminho atual do Node.js do NVM
+if command_exists nvm; then
+    NVM_CURRENT_NODE_PATH=$(which node)
+    NVM_BIN_PATH=$(dirname "$NVM_CURRENT_NODE_PATH")
+else
+    NVM_BIN_PATH="/usr/bin"
+fi
 
 # Serviço Redis
 sudo tee /etc/systemd/system/suna-redis.service > /dev/null << 'EOF'
@@ -387,7 +538,7 @@ Type=simple
 User=$USER
 Group=$USER
 WorkingDirectory=/opt/suna/repo/backend
-Environment=PATH=/opt/suna/suna-local-setup/backend/venv/bin
+Environment=PATH=/opt/suna/suna-local-setup/backend/venv/bin:$NVM_BIN_PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ExecStart=/opt/suna/suna-local-setup/backend/venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1
 Restart=always
 RestartSec=10
@@ -412,10 +563,10 @@ Type=simple
 User=$USER
 Group=$USER
 WorkingDirectory=/opt/suna/repo/frontend
-Environment=PATH=/usr/bin:/bin
+Environment=PATH=$NVM_BIN_PATH:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 Environment=NODE_ENV=production
 Environment=PORT=3000
-ExecStart=/usr/bin/npm start
+ExecStart=$NVM_BIN_PATH/npm start
 Restart=always
 RestartSec=10
 TimeoutStartSec=120
@@ -431,15 +582,10 @@ log_info "Habilitando serviços systemd..."
 sudo systemctl daemon-reload
 sudo systemctl enable suna-redis suna-llm suna-backend suna-frontend
 
-# Configurar rede WSL2 se script existir
-if [ -f "../configure_wsl2_network.sh" ]; then
-    log_info "Configurando rede para WSL2..."
-    cd ..
-    ./configure_wsl2_network.sh
-    cd suna-local-setup
-else
-    log_warning "Script de configuração de rede não encontrado"
-fi
+# Limpeza
+log_info "Realizando limpeza..."
+sudo apt autoremove -y
+sudo apt clean
 
 # Finalização
 echo ""
@@ -469,4 +615,15 @@ echo "   Parar:      ./stop_suna_wsl2.sh"
 echo "   Monitorar:  ./monitor_suna_wsl2.sh"
 echo "   Backup:     ./backup_suna_wsl2.sh"
 echo ""
-log_warning "⚠️  Lembre-se de configurar o Windows para acesso completo!"
+log_info "📝 Versões instaladas:"
+echo "   Node.js: $(node -v)"
+echo "   npm: $(npm -v)"
+echo "   Python: $(python3 --version)"
+echo "   Git: $(git --version)"
+echo "   Nginx: $(nginx -v 2>&1 | awk -F'/' '{print $2}' | awk '{print $1}')"
+echo ""
+log_warning "⚠️  Se você tiver problemas, tente reiniciar o WSL2:"
+log_warning "    wsl --shutdown (no PowerShell do Windows)"
+log_warning "    E então reabra o terminal WSL2."
+echo ""
+log_success "Obrigado por usar o instalador Suna WSL2! 🚀"
