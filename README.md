@@ -48,20 +48,36 @@ cd windows
 .\update_hosts.ps1
 ## Troubleshooting
 
-### Services Not Starting
+## **Melhorias Prioritárias a Implementar**
 
-Check the status of services:
-```bash
-systemctl status suna-llama.service
-systemctl status suna-backend.service
-systemctl status suna-frontend.service
-```
+### **Alta Prioridade:**
+1. ✅ Melhorar `install_wsl2.sh` com verificações robustas
+2. ✅ Criar `scripts/common.sh` com funções compartilhadas  
+3. ✅ Adicionar documentação detalhada
+4. ✅ Melhorar tratamento de erros nos scripts
+5. ✅ Adicionar verificação de recursos do sistema
 
-View logs:
-```bash
-journalctl -u suna-llama.service -n 50
-journalctl -u suna-backend.service -n 50
-```
+### **Média Prioridade:**
+1. 🔄 Criar script de atualização automática
+2. 🔄 Implementar sistema de logs estruturado
+3. 🔄 Adicionar testes automatizados
+4. 🔄 Criar dashboard web de monitoramento
+5. 🔄 Implementar backup incremental
+
+### **Baixa Prioridade:**
+1. 📋 Adicionar suporte a outros modelos LLM
+2. 📋 Criar interface de configuração web
+3. 📋 Implementar métricas de performance
+4. 📋 Adicionar suporte a Docker Compose
+5. 📋 Criar instalador GUI para Windows
+
+## 🎯 **Próximos Passos Recomendados**
+
+1. **Implementar as melhorias de alta prioridade**
+2. **Testar instalação em ambiente limpo**
+3. **Criar CI/CD para testes automatizados**
+4. **Documentar casos de uso específicos**
+5. **Criar vídeo tutorial de instalação**
 
 ### High Memory Usage
 
